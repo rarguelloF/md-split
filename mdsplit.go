@@ -3,10 +3,10 @@ package mdsplit
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"strconv"
 	"strings"
-
-	"github.com/google/uuid"
+	"time"
 
 	"github.com/russross/blackfriday/v2"
 )
@@ -245,7 +245,9 @@ func buildChunks(contents string, chunkLen int, wrappers []*wrapper) []*chunk {
 }
 
 func chunksAsStr(chunks []*chunk, max int, baseTitle, titleSuffixFmt string) []string {
-	titleTotalID := fmt.Sprintf("<%s>", uuid.New().String())
+	// generate a random ID to find within the text, so we can make replacements later
+	// when the necessary data is known (the total amount of comments)
+	textAnchor := genTextAnchor()
 
 	var result []string
 	curChunk := 1
@@ -273,7 +275,7 @@ func chunksAsStr(chunks []*chunk, max int, baseTitle, titleSuffixFmt string) []s
 		}
 
 		if baseTitle != "" {
-			title := baseTitle + fmt.Sprintf(titleSuffixFmt, curChunk, titleTotalID)
+			title := baseTitle + fmt.Sprintf(titleSuffixFmt, curChunk, textAnchor)
 			cmStr = title + cmStr
 		}
 
@@ -284,7 +286,7 @@ func chunksAsStr(chunks []*chunk, max int, baseTitle, titleSuffixFmt string) []s
 	totalStr := strconv.Itoa(len(result))
 
 	for i := 0; i < len(result); i++ {
-		result[i] = strings.Replace(result[i], titleTotalID, totalStr, 1)
+		result[i] = strings.Replace(result[i], textAnchor, totalStr, 1)
 	}
 
 	return result
@@ -295,4 +297,18 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func genTextAnchor() string {
+	const charset = "abcdefghijklmnopqrstuvwxyz" +
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	b := make([]byte, 32)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+
+	return fmt.Sprintf("<%s>", string(b))
 }
