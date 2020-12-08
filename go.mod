@@ -1,4 +1,4 @@
-module github.com/rarguellof/mdsplit
+module github.com/rarguellof/md-split
 
 go 1.15
 
