@@ -21,19 +21,19 @@ func TestMarkdownSplit(t *testing.T) {
 		ok     bool
 	}
 
-	testCases := []struct {
+	testCases := map[string]struct {
 		input    *testInput
 		expected *testOutput
 	}{
-		{
+		"basic_1": {
 			&testInput{"Some basic comment", 100, ""},
 			&testOutput{[]string{"Some basic comment"}, true},
 		},
-		{
+		"basic_2": {
 			&testInput{"Some basic comment", 10, ""},
 			&testOutput{[]string{"Some basic", " comment"}, true},
 		},
-		{
+		"title_1": {
 			&testInput{"### Comment with title\n\nIncludes the title in every split.", 55, ""},
 			&testOutput{
 				[]string{
@@ -44,7 +44,32 @@ func TestMarkdownSplit(t *testing.T) {
 				true,
 			},
 		},
-		{
+		"title_2": {
+			&testInput{"# Main title\n\nSome text.\n\n## Second title\n\nWhatever", 40, ""},
+			&testOutput{
+				[]string{
+					"# Main title (1/7)\n\nSome tex",
+					"# Main title (2/7)\n\nt.",
+					"# Main title (3/7)\n\n## Sec\n\n",
+					"# Main title (4/7)\n\n## ond\n\n",
+					"# Main title (5/7)\n\n##  ti\n\n",
+					"# Main title (6/7)\n\n## tle\n\n",
+					"# Main title (7/7)\n\nWhatever",
+				},
+				true,
+			},
+		},
+		"title_3": {
+			&testInput{"Some text.\n\n# Some title\n\nWhatever", 30, ""},
+			&testOutput{
+				[]string{
+					"Some text.# Some title\n\n",
+					"Whatever",
+				},
+				true,
+			},
+		},
+		"codeblock_1": {
 			&testInput{"```thelang\nSplits codeblocks.\nProperly\nand without breaking syntax highlight```", 30, ""},
 			&testOutput{
 				[]string{
@@ -57,7 +82,7 @@ func TestMarkdownSplit(t *testing.T) {
 				true,
 			},
 		},
-		{
+		"html_1": {
 			&testInput{"<tag1>Splits content <tag2> nested in html spans <tag3>properly</tag3> and keeping tags.</tag2></tag1>", 60, ""},
 			&testOutput{
 				[]string{
@@ -69,7 +94,7 @@ func TestMarkdownSplit(t *testing.T) {
 				true,
 			},
 		},
-		{
+		"html_2": {
 			&testInput{"<tag1>Splits content <tag2> nested in html spans <tag3>properly</tag3> and keeping tags.</tag2></tag1>", 40, ""},
 			&testOutput{
 				[]string{
@@ -90,7 +115,7 @@ func TestMarkdownSplit(t *testing.T) {
 				true,
 			},
 		},
-		{
+		"html_3": {
 			// if given max length is not big enough to fit all corresponding opening and closing spans, perform simple split
 			&testInput{"<tag1>Splits content <tag2> nested in html spans <tag3>properly</tag3> and keeping tags.</tag2></tag1>", 30, ""},
 			&testOutput{
@@ -103,24 +128,8 @@ func TestMarkdownSplit(t *testing.T) {
 				false,
 			},
 		},
-		{
-			&testInput{"# Main title\n\nSome text.\n\n## Second title\n\nWhatever", 40, ""},
-			&testOutput{
-				[]string{
-					"# Main title (1/7)\n\nSome tex",
-					"# Main title (2/7)\n\nt.",
-					"# Main title (3/7)\n\n## Sec\n\n",
-					"# Main title (4/7)\n\n## ond\n\n",
-					"# Main title (5/7)\n\n##  ti\n\n",
-					"# Main title (6/7)\n\n## tle\n\n",
-					"# Main title (7/7)\n\nWhatever",
-				},
-				true,
-			},
-		},
-
 		// TODO: smart split of tables is not supported yet, update test when implemented
-		{
+		"tables_1": {
 			&testInput{
 				markdown: `
 | A     | B          | This one has a very long heading | D      | E       |
@@ -142,7 +151,7 @@ func TestMarkdownSplit(t *testing.T) {
 				ok: true,
 			},
 		},
-		{
+		"links_1": {
 			&testInput{"[I'm an inline-style link](https://www.google.com)", 40, ""},
 			&testOutput{
 				[]string{
@@ -152,7 +161,7 @@ func TestMarkdownSplit(t *testing.T) {
 				true,
 			},
 		},
-		{
+		"links_2": {
 			&testInput{`
 [I'm an inline-style link](https://www.google.com)
 
@@ -192,7 +201,7 @@ Some text to show that the reference links can follow later.
 				true,
 			},
 		},
-		{
+		"lists_1": {
 			&testInput{`
 1. First ordered list item
 2. Another item
@@ -212,7 +221,7 @@ Some text to show that the reference links can follow later.
 				false,
 			},
 		},
-		{
+		"styles_1": {
 			&testInput{`
 Emphasis, aka italics, with *asterisks* or _underscores_.
 
@@ -233,15 +242,14 @@ Strikethrough uses two tildes. ~~Scratch this.~~
 					"Strikethrough uses two tildes. ",
 					"~~Scratch this.~~",
 				},
-				false,
+				true,
 			},
 		},
 	}
 
-	for i, tc := range testCases {
+	for name, tc := range testCases {
 		tc := tc
-		name := fmt.Sprintf("case_%d", i+1)
-		t.Run(name, func(t *testing.T) {
+		t.Run(fmt.Sprintf("case_%s", name), func(t *testing.T) {
 			t.Parallel()
 			result, ok := MarkdownSplit(tc.input.markdown, tc.input.max, tc.input.join)
 			assert.Equal(t, tc.expected.chunks, result)

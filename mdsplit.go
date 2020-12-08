@@ -87,7 +87,7 @@ func MarkdownSplit(text string, max int, sep string) ([]string, bool) {
 			case blackfriday.Heading:
 				heading := strings.Repeat("#", parent.Level)
 
-				if baseTitle == "" {
+				if baseTitle == "" && len(chunks) == 0 {
 					baseTitle = fmt.Sprintf("%s %s", heading, contents)
 
 					// give extra 10 characters to the title, just in case the totalComments grow too much
